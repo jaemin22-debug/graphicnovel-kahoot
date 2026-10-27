@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Graphic Novel Kahoot! - Michael Chaney TEDx Quiz</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome 6 & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <!-- Firebase App & Realtime Database SDK (Compat v9) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    body {
+      font-family: 'Montserrat', 'Noto Sans KR', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .bg-kahoot-purple { background-color: #46178f; }
+    .bg-kahoot-dark   { background-color: #2b0c5e; }
+    .bg-kahoot-red    { background-color: #e21b3c; }
+    .bg-kahoot-blue   { background-color: #1368ce; }
+    .bg-kahoot-yellow { background-color: #d89e00; }
+    .bg-kahoot-green  { background-color: #26890c; }
+
+    .hover-red:hover    { background-color: #c41330; }
+    .hover-blue:hover   { background-color: #0f52a5; }
+    .hover-yellow:hover { background-color: #bc8900; }
+    .hover-green:hover  { background-color: #1f6f0a; }
+
+    .pulse-glow {
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.65);
+    }
+
+    /* Print & A4 PDF Report Rules */
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #print-report-container, #print-report-container * {
+        visibility: visible !important;
+      }
+      #print-report-container {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        background: white !important;
+        color: #111827 !important;
+        padding: 28px !important;
+        display: block !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-kahoot-purple text-white min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+  <!-- ================= TOP HEADER ================= -->
+  <header class="p-3 sm:p-4 bg-kahoot-dark/90 backdrop-blur border-b border-white/10 flex items-center justify-between sticky top-0 z-30 shadow-md">
+    <div class="flex items-center gap-2.5 cursor-pointer" onclick="ui.goHome()">
+      <div class="w-10 h-10 rounded-2xl bg-amber-400 text-purple-950 flex items-center justify-center font-black text-xl shadow">
+        K!
+      </div>
+      <div>
+        <h1 class="text-sm sm:text-base font-black tracking-tight flex items-center gap-2">
+          GRAPHIC NOVEL KAHOOT!
+          <span class="text-[11px] bg-white/15 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-300/30 hidden sm:inline-block">
+            TEDx Michael Chaney
+          </span>
+        </h1>
+        <p class="text-xs text-purple-200 hidden sm:block">How to Read a Graphic Novel 이해도 평가 퀴즈</p>
+      </div>
+    </div>
+
+    <!-- Sync Indicator & Controls -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Sync Status Badge -->
+      <div id="sync-status-indicator" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/10 border border-white/15">
+        <span id="sync-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="sync-text">동기화 활성</span>
+      </div>
+
+      <!-- Audio Mute Button -->
+      <button onclick="audioFx.toggleMute()" id="sound-btn" class="p-2 sm:px-3 sm:py-1 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold transition flex items-center gap-1.5">
+        <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+        <span class="hidden md:inline" id="sound-label">사운드</span>
+      </button>
+
+      <!-- Firebase Setup Button -->
+      <button onclick="ui.openModal('modal-firebase')" class="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-purple-950 text-xs font-black transition flex items-center gap-1.5 shadow">
+        <i class="fa-solid fa-fire"></i>
+        <span class="hidden sm:inline">Firebase 연동</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= MAIN VIEW CONTAINER ================= -->
+  <main class="flex-1 flex flex-col items-center justify-center p-3 sm:p-6 w-full max-w-5xl mx-auto z-10">
+
+    <!-- ================= SCREEN 0: ROLE SELECTOR ================= -->
+    <section id="screen-home" class="w-full max-w-xl text-center space-y-6">
+      <div class="space-y-2">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-400 text-purple-950 uppercase tracking-wider">
+          <i class="fa-solid fa-book-open"></i> English Literature Class Quiz
+        </span>
+        <h2 class="text-3xl sm:text-4xl font-black tracking-tight leading-tight">
+          그래픽 노블 실시간 카훗 퀴즈
+        </h2>
+        <p class="text-sm sm:text-base text-purple-200 max-w-md mx-auto">
+          Michael Chaney 교수의 TEDx 강연 핵심 4문항을 통해 실시간으로 학생들의 영상 이해도를 점검합니다.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        <!-- Host Screen Card -->
+        <button onclick="hostApp.initHost()" class="group bg-white hover:bg-purple-50 text-purple-950 p-6 rounded-3xl shadow-2xl flex flex-col items-center gap-3 transition active:scale-95 text-center border-4 border-transparent hover:border-amber-400">
+          <div class="w-16 h-16 rounded-2xl bg-kahoot-purple text-amber-300 flex items-center justify-center text-3xl group-hover:scale-105 transition-transform shadow">
+            <i class="fa-solid fa-chalkboard-user"></i>
+          </div>
+          <div>
+            <span class="text-xl font-black block">진행자 (호스트 / 교수)</span>
+            <span class="text-xs text-gray-500 block mt-1 leading-relaxed">
+              빔프로젝터용 대형 화면. PIN 방 생성, 타이머, 정답 통계 차트 및 성적표(Excel/PDF) 추출
+            </span>
+          </div>
+        </button>
+
+        <!-- Player Screen Card -->
+        <button onclick="playerApp.initPlayer()" class="group bg-white hover:bg-purple-50 text-purple-950 p-6 rounded-3xl shadow-2xl flex flex-col items-center gap-3 transition active:scale-95 text-center border-4 border-transparent hover:border-blue-500">
+          <div class="w-16 h-16 rounded-2xl bg-kahoot-blue text-white flex items-center justify-center text-3xl group-hover:scale-105 transition-transform shadow">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+          </div>
+          <div>
+            <span class="text-xl font-black block">참가 학생 (플레이어)</span>
+            <span class="text-xs text-gray-500 block mt-1 leading-relaxed">
+              모바일 또는 노트북으로 참여. PIN 번호와 학번·이름 입력 후 빨/파/노/초 정답 버튼 누르기
+            </span>
+          </div>
+        </button>
+      </div>
+
+      <!-- TEDx Reference Link Banner -->
+      <div class="bg-kahoot-dark/80 p-4 rounded-2xl border border-white/10 text-xs text-purple-200 flex items-center justify-between gap-3 text-left">
+        <div class="flex items-center gap-3">
+          <i class="fa-brands fa-youtube text-3xl text-red-500 shrink-0"></i>
+          <div>
+            <div class="font-bold text-white">TEDx: How to Read a Graphic Novel (Michael Chaney)</div>
+            <div class="text-purple-300">스콧 맥클라우드 도상 이론, 회고록 장르, 실제 사진의 충격, 글과 그림의 상호 긴장</div>
+          </div>
+        </div>
+        <a href="https://www.youtube.com/watch?v=qAyEbgSPi9w" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shrink-0 transition flex items-center gap-1">
+          영상 보기 <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+        </a>
+      </div>
+    </section>
+
+    <!-- ================= SCREEN 1: HOST LOBBY ================= -->
+    <section id="screen-host-lobby" class="w-full space-y-6 hidden">
+      <!-- Game PIN Announcement Card -->
+      <div class="bg-white text-purple-950 p-5 sm:p-7 rounded-3xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 border-b-8 border-amber-400">
+        <div>
+          <span class="text-xs font-black uppercase text-gray-400 tracking-wider">Join from any device</span>
+          <div class="text-xl sm:text-2xl font-black text-purple-950">
+            화면의 <span class="bg-purple-100 text-purple-900 px-2 py-0.5 rounded-lg">Game PIN</span>을 입력하고 들어오세요!
+          </div>
+          <p class="text-xs text-gray-500 mt-1">스마트폰 브라우저로 실시간 접속할 수 있습니다.</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="text-center bg-gray-100 px-6 sm:px-8 py-3 rounded-2xl border-2 border-gray-200 shadow-inner">
+            <span class="text-xs font-bold text-gray-500 block">GAME PIN</span>
+            <span id="lobby-pin-display" class="text-4xl sm:text-5xl font-black tracking-widest text-kahoot-dark">
+              ------
+            </span>
+          </div>
+          <button onclick="hostApp.copyPIN()" class="p-4 bg-purple-100 hover:bg-purple-200 text-purple-950 rounded-2xl transition shadow" title="PIN 복사">
+            <i class="fa-solid fa-copy text-2xl"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Realtime Student Roster in Lobby -->
+      <div class="bg-kahoot-dark/85 rounded-3xl p-6 border border-white/10 min-h-[300px] flex flex-col justify-between shadow-xl">
+        <div>
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+            <div class="flex items-center gap-3">
+              <span id="lobby-participant-count" class="w-9 h-9 rounded-full bg-amber-400 text-purple-950 font-black flex items-center justify-center text-sm shadow">
+                0
+              </span>
+              <h3 class="text-lg font-bold">실시간 참가 학생 명단 (Live Lobby)</h3>
+            </div>
+
+            <!-- Instant Bot Test Injector -->
+            <button onclick="hostApp.injectSampleBots(4)" class="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-amber-300 transition flex items-center gap-1.5 border border-amber-400/30">
+              <i class="fa-solid fa-users"></i> 가상 학생 4명 추가 (테스트용)
+            </button>
+          </div>
+
+          <div id="lobby-players-box" class="flex flex-wrap gap-2.5 justify-center py-6 min-h-[140px]">
+            <!-- Injected dynamically -->
+          </div>
+        </div>
+
+        <div class="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10">
+          <div class="text-xs text-purple-300">
+            💡 학생들이 학번과 이름을 입력하고 모두 접속하면 <b>[퀴즈 시작하기]</b> 버튼을 누르세요.
+          </div>
+          <button onclick="hostApp.startQuiz()" class="w-full sm:w-auto px-10 py-4 bg-amber-400 hover:bg-amber-300 active:scale-95 text-purple-950 font-black text-xl rounded-2xl shadow-xl transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-play"></i> 퀴즈 시작하기 (Start Game)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SCREEN 2: HOST ACTIVE QUESTION ================= -->
+    <section id="screen-host-question" class="w-full space-y-4 hidden">
+      <!-- Question Board -->
+      <div class="bg-white text-purple-950 p-5 sm:p-7 rounded-3xl shadow-2xl space-y-3">
+        <div class="flex items-center justify-between">
+          <span id="host-q-badge" class="px-3.5 py-1 bg-purple-100 text-purple-900 rounded-full font-black text-xs sm:text-sm">
+            QUESTION 1 OF 4
+          </span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-gray-500">답변 제출 현황:</span>
+            <span id="host-answers-count" class="font-black text-lg text-purple-950">0 / 0</span>
+          </div>
+        </div>
+
+        <h2 id="host-q-text" class="text-xl sm:text-2xl md:text-3xl font-black text-center py-2 leading-snug">
+          <!-- Question text -->
+        </h2>
+      </div>
+
+      <!-- Timer & Skip Bar -->
+      <div class="flex items-center justify-between bg-kahoot-dark/85 px-6 py-3.5 rounded-2xl border border-white/10 shadow-lg">
+        <div class="flex items-center gap-4">
+          <div id="host-timer-box" class="w-16 h-16 rounded-2xl bg-amber-400 text-purple-950 font-black text-3xl flex items-center justify-center shadow-lg border-2 border-white/30 transition-colors">
+            20
+          </div>
+          <div>
+            <div class="text-sm font-bold text-white">남은 제한 시간 (Seconds)</div>
+            <div class="text-xs text-purple-300">신속하고 정확하게 응답할수록 더 높은 보너스 점수가 주어집니다.</div>
+          </div>
+        </div>
+
+        <button onclick="hostApp.concludeQuestionEarly()" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-xs font-bold rounded-xl transition border border-white/15">
+          즉시 마감하고 결과 보기
+        </button>
+      </div>
+
+      <!-- 4 Kahoot Answer Boards for Big Screen -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5" id="host-choices-container">
+        <!-- 4 choices injected -->
+      </div>
+    </section>
+
+    <!-- ================= SCREEN 3: HOST ANSWER REVEAL & SCOREBOARD ================= -->
+    <section id="screen-host-reveal" class="w-full space-y-5 hidden">
+      <!-- Answer Analysis Banner -->
+      <div class="bg-white text-purple-950 p-6 sm:p-7 rounded-3xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 border-b-8 border-emerald-500">
+        <div class="space-y-1.5 text-left">
+          <span class="text-xs font-black uppercase text-gray-400 tracking-wider">문제 분석 및 정답</span>
+          <h3 id="reveal-correct-box" class="text-lg sm:text-xl font-black text-emerald-700 flex items-center gap-2">
+            <!-- Correct banner -->
+          </h3>
+          <p id="reveal-expl-text" class="text-sm text-gray-700 leading-relaxed max-w-xl">
+            <!-- Explanation -->
+          </p>
+        </div>
+
+        <button onclick="hostApp.nextStep()" class="px-8 py-4 bg-kahoot-purple hover:bg-purple-900 active:scale-95 text-white font-black text-base rounded-2xl shadow-xl transition flex items-center gap-2 shrink-0">
+          <span id="reveal-next-btn-text">다음 문제로</span> <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+
+      <!-- Real-time Answer Frequency Bar Chart -->
+      <div class="bg-kahoot-dark/85 rounded-3xl p-6 border border-white/10 shadow-xl space-y-4">
+        <h4 class="text-sm font-bold text-purple-200 uppercase tracking-wider flex items-center gap-2">
+          <i class="fa-solid fa-chart-column text-amber-400 text-lg"></i> 학생 응답 분포도 (Response Distribution)
+        </h4>
+        <div class="grid grid-cols-4 gap-3 text-center" id="reveal-bars-box">
+          <!-- 4 animated response bars -->
+        </div>
+      </div>
+
+      <!-- Top 5 Realtime Leaderboard -->
+      <div class="bg-kahoot-dark/85 rounded-3xl p-6 border border-white/10 shadow-xl space-y-3">
+        <h4 class="text-base font-black text-amber-300 flex items-center gap-2">
+          <i class="fa-solid fa-trophy text-2xl"></i> 실시간 상위 순위 (Top 5 Leaderboard)
+        </h4>
+        <div id="reveal-leaderboard-box" class="space-y-2">
+          <!-- Leaderboard list -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SCREEN 4: HOST FINAL PODIUM & EXPORT ================= -->
+    <section id="screen-host-podium" class="w-full space-y-6 hidden">
+      <div class="text-center space-y-1">
+        <span class="px-3.5 py-1 bg-amber-400 text-purple-950 font-black rounded-full text-xs uppercase tracking-wider">
+          Quiz Completed
+        </span>
+        <h2 class="text-3xl sm:text-4xl font-black">🎉 최종 퀴즈 시상대 (Podium) 🎉</h2>
+        <p class="text-sm text-purple-200">Michael Chaney: How to Read a Graphic Novel 평가가 완료되었습니다.</p>
+      </div>
+
+      <!-- 3D-styled Animated Podium -->
+      <div class="flex items-end justify-center gap-3 sm:gap-6 pt-6 pb-2 max-w-xl mx-auto min-h-[260px]">
+        <!-- 2nd Place -->
+        <div class="flex-1 flex flex-col items-center">
+          <div class="text-xs sm:text-sm font-bold text-slate-200 mb-1.5 truncate max-w-[110px]" id="podium-2nd-name">-</div>
+          <div class="w-full bg-slate-300/30 border-t-4 border-slate-300 rounded-t-3xl flex flex-col items-center justify-center p-3 h-32 sm:h-40 shadow-xl">
+            <span class="text-3xl sm:text-4xl font-black text-slate-200">2nd</span>
+            <span class="text-xs font-bold text-purple-200 mt-1" id="podium-2nd-pts">0 pts</span>
+          </div>
+        </div>
+
+        <!-- 1st Place -->
+        <div class="flex-1 flex flex-col items-center">
+          <i class="fa-solid fa-crown text-4xl text-amber-300 animate-bounce mb-1"></i>
+          <div class="text-sm sm:text-base font-black text-amber-300 mb-1.5 truncate max-w-[120px]" id="podium-1st-name">-</div>
+          <div class="w-full bg-amber-500/40 border-t-4 border-amber-400 rounded-t-3xl flex flex-col items-center justify-center p-3 h-44 sm:h-52 shadow-2xl pulse-glow">
+            <span class="text-4xl sm:text-5xl font-black text-amber-300">1st</span>
+            <span class="text-sm font-black text-amber-100 mt-1" id="podium-1st-pts">0 pts</span>
+          </div>
+        </div>
+
+        <!-- 3rd Place -->
+        <div class="flex-1 flex flex-col items-center">
+          <div class="text-xs sm:text-sm font-bold text-amber-600/90 mb-1.5 truncate max-w-[110px]" id="podium-3rd-name">-</div>
+          <div class="w-full bg-amber-700/30 border-t-4 border-amber-700 rounded-t-3xl flex flex-col items-center justify-center p-3 h-24 sm:h-32 shadow-lg">
+            <span class="text-2xl sm:text-3xl font-black text-amber-500">3rd</span>
+            <span class="text-xs font-bold text-purple-200 mt-1" id="podium-3rd-pts">0 pts</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export Data Actions -->
+      <div class="bg-white text-purple-950 p-6 sm:p-7 rounded-3xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-5 border-4 border-amber-400">
+        <div>
+          <h4 class="text-lg font-black flex items-center gap-2">
+            <i class="fa-solid fa-file-export text-2xl text-purple-900"></i>
+            학생 출석 및 성적 기록 내보내기 (Export Data)
+          </h4>
+          <p class="text-xs text-gray-600 mt-0.5">
+            학생들의 학번, 성명, 정답 개수, 총점이 정리된 엑셀(CSV)과 서명 가능한 A4 PDF 성적표를 내려받습니다.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Excel Export -->
+          <button onclick="exportService.exportExcel()" class="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-sm rounded-xl shadow-lg transition flex items-center gap-2">
+            <i class="fa-solid fa-file-excel text-lg"></i>
+            엑셀 (CSV) 다운로드
+          </button>
+
+          <!-- Printable PDF -->
+          <button onclick="exportService.printPDFReport()" class="px-5 py-3 bg-kahoot-purple hover:bg-purple-900 active:scale-95 text-white font-black text-sm rounded-xl shadow-lg transition flex items-center gap-2">
+            <i class="fa-solid fa-print text-lg"></i>
+            성적표 인쇄 / PDF 저장
+          </button>
+        </div>
+      </div>
+
+      <!-- Full Grade Table -->
+      <div class="bg-kahoot-dark/85 rounded-3xl p-6 border border-white/10 shadow-xl space-y-3">
+        <h4 class="text-base font-bold text-white flex items-center justify-between">
+          <span>전체 참가 학생 명단 및 최종 성적</span>
+          <span id="final-total-tag" class="text-xs text-purple-300 font-normal">총 0명</span>
+        </h4>
+        <div class="overflow-x-auto max-h-64 overflow-y-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs uppercase bg-white/10 text-purple-200 sticky top-0 backdrop-blur">
+              <tr>
+                <th class="p-3 rounded-l-xl">순위</th>
+                <th class="p-3">학번</th>
+                <th class="p-3">이름</th>
+                <th class="p-3 text-center">맞힌 문항</th>
+                <th class="p-3 rounded-r-xl text-right">총점</th>
+              </tr>
+            </thead>
+            <tbody id="final-roster-tbody" class="divide-y divide-white/5 font-medium">
+              <!-- Injected via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SCREEN 5: PLAYER JOIN ================= -->
+    <section id="screen-player-join" class="w-full max-w-sm space-y-4 hidden">
+      <div class="bg-white text-purple-950 p-6 sm:p-7 rounded-3xl shadow-2xl space-y-4">
+        <div class="w-14 h-14 bg-kahoot-blue text-white rounded-2xl mx-auto flex items-center justify-center text-3xl shadow-md">
+          <i class="fa-solid fa-gamepad"></i>
+        </div>
+        <div class="text-center">
+          <h2 class="text-2xl font-black">카훗 퀴즈 입장</h2>
+          <p class="text-xs text-gray-500">교수님 화면의 PIN 번호와 본인 정보를 입력하세요.</p>
+        </div>
+
+        <div class="space-y-3 text-left">
+          <div>
+            <label class="text-xs font-bold text-gray-600 block mb-1">게임 PIN (Game PIN)</label>
+            <input type="tel" id="player-pin-input" maxlength="6" placeholder="예: 582109" class="w-full text-center text-2xl font-black tracking-widest px-4 py-3 bg-gray-100 rounded-xl border-2 border-transparent focus:border-purple-600 focus:bg-white focus:outline-none transition">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-600 block mb-1">학번 (Student ID)</label>
+            <input type="text" id="player-id-input" placeholder="예: 20241234" maxlength="15" class="w-full text-center text-base font-bold px-4 py-2.5 bg-gray-100 rounded-xl border-2 border-transparent focus:border-purple-600 focus:bg-white focus:outline-none transition">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-600 block mb-1">이름 (Full Name)</label>
+            <input type="text" id="player-name-input" placeholder="예: 홍길동" maxlength="15" class="w-full text-center text-base font-bold px-4 py-2.5 bg-gray-100 rounded-xl border-2 border-transparent focus:border-purple-600 focus:bg-white focus:outline-none transition">
+          </div>
+        </div>
+
+        <button onclick="playerApp.submitJoin()" class="w-full py-4 bg-kahoot-purple hover:bg-purple-900 active:scale-95 text-white rounded-xl font-black text-lg shadow-xl transition">
+          들어가기 (Join Game)
+        </button>
+      </div>
+
+      <button onclick="ui.goHome()" class="w-full text-center text-xs font-bold text-purple-300 hover:text-white underline">
+        역할 선택 화면으로 돌아가기
+      </button>
+    </section>
+
+    <!-- ================= SCREEN 6: PLAYER LOBBY WAITING ================= -->
+    <section id="screen-player-lobby" class="w-full max-w-sm text-center space-y-5 hidden">
+      <div class="bg-white text-purple-950 p-7 rounded-3xl shadow-2xl space-y-4">
+        <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full mx-auto flex items-center justify-center text-3xl font-black">
+          <i class="fa-solid fa-check"></i>
+        </div>
+        <h3 class="text-2xl font-black">접속 완료!</h3>
+        <p class="text-sm text-gray-600 leading-relaxed">
+          대형 화면에 본인 이름이 나타났는지 확인하세요.<br>
+          퀴즈가 곧 시작됩니다!
+        </p>
+
+        <div class="p-4 bg-purple-50 rounded-2xl text-center space-y-1">
+          <span class="text-xs text-gray-500 font-bold block">내 접속 정보</span>
+          <div id="player-profile-name" class="font-black text-xl text-purple-950">-</div>
+          <div id="player-profile-id" class="text-xs font-bold text-purple-700">-</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SCREEN 7: PLAYER ACTIVE BUTTONS ================= -->
+    <section id="screen-player-active" class="w-full max-w-md space-y-3 hidden">
+      <div class="flex items-center justify-between bg-kahoot-dark/85 px-4 py-2.5 rounded-2xl border border-white/10">
+        <span class="text-xs font-bold text-purple-200" id="player-current-q-tag">Q1</span>
+        <span class="text-xs font-black bg-amber-400 text-purple-950 px-2.5 py-0.5 rounded-full" id="player-timer-tag">20s</span>
+      </div>
+
+      <!-- 4 Giant Geometric Mobile Touch Buttons -->
+      <div class="grid grid-cols-2 gap-3 min-h-[360px] sm:min-h-[420px]" id="player-buttons-pad">
+        <button onclick="playerApp.submitAnswer(0)" class="player-k-btn bg-kahoot-red hover-red active:scale-95 rounded-2xl flex flex-col items-center justify-center text-white shadow-xl transition p-4">
+          <span class="text-5xl font-black">▲</span>
+        </button>
+        <button onclick="playerApp.submitAnswer(1)" class="player-k-btn bg-kahoot-blue hover-blue active:scale-95 rounded-2xl flex flex-col items-center justify-center text-white shadow-xl transition p-4">
+          <span class="text-5xl font-black">◆</span>
+        </button>
+        <button onclick="playerApp.submitAnswer(2)" class="player-k-btn bg-kahoot-yellow hover-yellow active:scale-95 rounded-2xl flex flex-col items-center justify-center text-white shadow-xl transition p-4">
+          <span class="text-5xl font-black">●</span>
+        </button>
+        <button onclick="playerApp.submitAnswer(3)" class="player-k-btn bg-kahoot-green hover-green active:scale-95 rounded-2xl flex flex-col items-center justify-center text-white shadow-xl transition p-4">
+          <span class="text-5xl font-black">■</span>
+        </button>
+      </div>
+
+      <div class="text-center text-xs text-purple-200">
+        대형 화면의 문항 보기를 확인하고 알맞은 기호를 탭하세요!
+      </div>
+    </section>
+
+    <!-- ================= SCREEN 8: PLAYER FEEDBACK ================= -->
+    <section id="screen-player-feedback" class="w-full max-w-sm text-center space-y-4 hidden">
+      <div id="player-feedback-box" class="p-8 rounded-3xl shadow-2xl text-white space-y-3 bg-kahoot-dark transition-colors">
+        <div id="feedback-icon-box" class="text-6xl animate-bounce">⏳</div>
+        <h3 id="feedback-title-box" class="text-2xl font-black">답안 전송 완료!</h3>
+        <p id="feedback-subtitle-box" class="text-sm opacity-90">선생님이 결과를 공개할 때까지 대기합니다.</p>
+        <div id="feedback-score-tag" class="hidden mt-3 inline-block px-5 py-2 bg-black/25 rounded-full font-black text-sm">
+          +0 pts
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SCREEN 9: PLAYER FINAL RANK ================= -->
+    <section id="screen-player-final" class="w-full max-w-sm text-center space-y-4 hidden">
+      <div class="bg-white text-purple-950 p-7 rounded-3xl shadow-2xl space-y-4">
+        <div class="text-5xl">🎓</div>
+        <h3 class="text-2xl font-black">퀴즈 종료!</h3>
+        <div class="p-5 bg-purple-50 rounded-2xl space-y-2">
+          <div class="text-xs font-bold text-gray-500">나의 최종 결과</div>
+          <div class="text-4xl font-black text-kahoot-purple" id="player-final-rank-tag"># 1위</div>
+          <div class="text-sm font-bold text-gray-700" id="player-final-score-tag">총 0점 (0 / 4 정답)</div>
+        </div>
+        <p class="text-xs text-gray-500">
+          Michael Chaney: How to Read a Graphic Novel 퀴즈에 참여해주셔서 감사합니다!
+        </p>
+        <button onclick="ui.goHome()" class="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-bold text-sm transition">
+          홈으로 나가기
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= PRINTABLE OFFICIAL A4 PDF REPORT ================= -->
+  <div id="print-report-container" class="hidden font-sans">
+    <div style="border-bottom: 3px solid #1e1b4b; padding-bottom: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+      <div>
+        <span style="font-size: 11px; font-weight: bold; color: #4338ca; text-transform: uppercase;">Classroom Real-time Assessment Report</span>
+        <h1 style="font-size: 22px; font-weight: 900; margin: 4px 0 0 0; color: #1e1b4b;">그래픽 노블 이해도 카훗 퀴즈 성적 결과표</h1>
+        <p style="font-size: 13px; color: #475569; margin: 4px 0 0 0;">대상 강연: Michael Chaney (TEDx Talk - How to Read a Graphic Novel)</p>
+      </div>
+      <div style="text-align: right; font-size: 11px; color: #64748b; line-height: 1.5;">
+        <div>평가 일시: <strong id="print-date">-</strong></div>
+        <div>진행 PIN: <strong id="print-pin">------</strong></div>
+      </div>
+    </div>
+
+    <!-- Summary Box -->
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-around; font-size: 13px;">
+      <div><strong>총 응시 학생:</strong> <span id="print-total-students">0명</span></div>
+      <div><strong>총 문항 수:</strong> 4문항</div>
+      <div><strong>학급 최고 득점:</strong> <span id="print-top-score">-</span></div>
+      <div><strong>학급 평균 점수:</strong> <span id="print-avg-score">0점</span></div>
+    </div>
+
+    <!-- Student Score Roster Table -->
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 28px;">
+      <thead>
+        <tr style="background-color: #f1f5f9; border-top: 2px solid #cbd5e1; border-bottom: 2px solid #cbd5e1;">
+          <th style="padding: 9px; text-align: center; width: 60px;">순위</th>
+          <th style="padding: 9px; text-align: left; width: 120px;">학번</th>
+          <th style="padding: 9px; text-align: left;">성명</th>
+          <th style="padding: 9px; text-align: center; width: 100px;">정답 수</th>
+          <th style="padding: 9px; text-align: right; width: 120px;">최종 점수</th>
+        </tr>
+      </thead>
+      <tbody id="print-table-body">
+        <!-- Injected via JavaScript -->
+      </tbody>
+    </table>
+
+    <div style="border-top: 1px solid #cbd5e1; padding-top: 14px; font-size: 11px; color: #64748b; display: flex; justify-content: space-between; align-items: center;">
+      <span>교과목 담당 교수 서명: ____________________ (인)</span>
+      <span>본 성적표는 Realtime Evaluation System을 통해 정규 집계되었습니다.</span>
+    </div>
+  </div>
+
+  <!-- ================= FIREBASE CONFIG MODAL ================= -->
+  <div id="modal-firebase" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-purple-950 rounded-3xl p-6 sm:p-7 w-full max-w-lg shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h3 class="text-lg font-black flex items-center gap-2">
+          <i class="fa-solid fa-fire text-amber-500 text-xl"></i> Firebase 실시간 연동 설정
+        </h3>
+        <button onclick="ui.closeModal('modal-firebase')" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">✕</button>
+      </div>
+
+      <p class="text-xs text-gray-600 leading-relaxed">
+        선생님과 학생들이 <b>서로 다른 스마트폰/PC</b>에서 원격 참여하려면 Firebase Realtime Database의 Config JSON을 붙여넣으세요.<br>
+        (설정하지 않더라도 동일 기기의 여러 브라우저 탭/창에서는 <b>무료 로컬 브로드캐스트</b>로 완벽 동기화됩니다!)
+      </p>
+
+      <div>
+        <label class="text-xs font-bold text-gray-700 block mb-1">Firebase Configuration (JSON)</label>
+        <textarea id="firebase-config-input" rows="6" class="w-full text-xs font-mono p-3 bg-gray-50 border rounded-xl focus:outline-none focus:border-purple-600" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "your-app.firebaseapp.com",
+  "databaseURL": "https://your-app-default-rtdb.firebaseio.com",
+  "projectId": "your-app",
+  "storageBucket": "your-app.appspot.com",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <button onclick="syncEngine.clearFirebaseConfig()" class="text-xs text-red-500 font-bold hover:underline">
+          설정 초기화
+        </button>
+        <div class="flex gap-2">
+          <button onclick="ui.closeModal('modal-firebase')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold">
+            닫기
+          </button>
+          <button onclick="syncEngine.saveFirebaseConfig()" class="px-5 py-2 bg-kahoot-purple hover:bg-purple-900 text-white rounded-xl text-xs font-bold shadow">
+            저장 및 활성화
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast-bar" class="fixed bottom-6 right-6 z-50 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl text-sm font-bold flex items-center gap-2.5 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+    <i class="fa-solid fa-circle-info text-amber-400 text-lg"></i>
+    <span id="toast-message">알림</span>
+  </div>
+
+  <!-- ================= JAVASCRIPT APPLICATION LOGIC ================= -->
+  <script>
+    /* =========================================================================
+       1. 4 TEDX QUESTIONS (Michael Chaney: How to Read a Graphic Novel)
+       ========================================================================= */
+    const QUIZ_QUESTIONS = [
+      {
+        id: 1,
+        question: "Scott McCloud의 '아이코닉 추상화(Iconic Abstraction)' 개념에 따르면 단순화된 만화 얼굴이 주는 가장 큰 효과는?",
+        choices: [
+          "인쇄 비용을 줄이고 만화 작가의 작업 시간을 단축시켜 준다.",
+          "독자가 자신의 얼굴과 마음을 쉽게 투영하여 자아일체화할 수 있다.",
+          "실제 사진보다 높은 사실성과 과학적 정밀함을 제공한다.",
+          "어린이 독자들에게만 재미를 주기 위한 단순한 상업적 장치이다."
+        ],
+        correctIndex: 1,
+        explanation: "맥클라우드의 핵심 이론: 사실적인 얼굴은 '타인'으로 보이지만, 극도로 단순화된 카툰 얼굴은 독자 누구나 자신의 자아와 감정을 직접 투영할 수 있게 만듭니다."
+      },
+      {
+        id: 2,
+        question: "강연자가 지적한 '그래픽 노블(Graphic Novel)'의 실제 내용적 두드러진 특징은?",
+        choices: [
+          "슈퍼히어로가 악당을 물리치는 전형적인 허구 판타지가 주를 이룬다.",
+          "순수 허구의 소설보다는 자전적 이야기나 회고록(자서전) 형태가 많다.",
+          "대사(글자)를 전혀 쓰지 않는 무언(Silent) 만화 형식이다.",
+          "신문 한 칸에 실리는 짧은 정치 풍자 만평이다."
+        ],
+        correctIndex: 1,
+        explanation: "『쥐(Maus)』, 『페르세폴리스(Persepolis)』 등 주요 그래픽 노블들은 허구의 소설보다 작가의 실제 상처, 역사적 비극과 자아를 고백하는 자서전 및 회고록(Memoir)의 비중이 매우 높습니다."
+      },
+      {
+        id: 3,
+        question: "<쥐(Maus)>나 <페르세폴리스> 같은 그래픽 노블에서 만화 그림 속에 실제 '사진(Photograph)'을 삽입할 때 발생하는 효과는?",
+        choices: [
+          "만화의 세계관과 충돌하며 역사적 진실과 기억의 구성성을 의심하고 직시하게 만든다.",
+          "작가의 드로잉 실력 부족을 숨기기 위한 시각적 눈속임이다.",
+          "단순히 책의 남는 여백을 채우기 위한 부속 디자인 요소이다.",
+          "독자에게 만화의 가벼운 재미를 극대화하기 위한 희극적 장치이다."
+        ],
+        correctIndex: 0,
+        explanation: "만화적 선화 속 실제 사진의 등장은 시각적 균열(Rupture)을 일으켜, 이것이 꾸며낸 이야기가 아닌 실제 홀로코스트의 역사적 비극이자 조작되지 않은 실재임을 강렬하게 환기합니다."
+      },
+      {
+        id: 4,
+        question: "강연자가 강조한 그래픽 노블을 읽을 때 관객(독자)이 영화와 달리 '능동적(Active)'이어야 하는 근본적인 이유는?",
+        choices: [
+          "책장을 빠르게 넘기지 않으면 페이지가 사라지기 때문에",
+          "글(언어)과 그림(도상)이라는 두 상징 체계의 긴장과 틈새를 독자가 직접 해석해야 하므로",
+          "작가가 정답을 전혀 제공하지 않는 난해한 추상화이기 때문에",
+          "영상의 사운드가 없어서 독자가 직접 소리 내어 읽어야 하므로"
+        ],
+        correctIndex: 1,
+        explanation: "그래픽 노블을 '읽는(Reading)' 행위는 글과 그림이 주는 불일치, 긴장감(Interplay & Tension)을 독자가 능동적으로 조합하고 메워가며 의미를 완성하는 과정입니다."
+      }
+    ];
+
+    const KAHOOT_STYLES = [
+      { bg: 'bg-kahoot-red', symbol: '▲', label: '1번 (Red)' },
+      { bg: 'bg-kahoot-blue', symbol: '◆', label: '2번 (Blue)' },
+      { bg: 'bg-kahoot-yellow', symbol: '●', label: '3번 (Yellow)' },
+      { bg: 'bg-kahoot-green', symbol: '■', label: '4번 (Green)' }
+    ];
+
+    /* =========================================================================
+       2. PROCEDURAL SOUND ENGINE (Web Audio API)
+       ========================================================================= */
+    class AudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+      }
+      toggleMute() {
+        this.muted = !this.muted;
+        const icon = document.getElementById('sound-icon');
+        const label = document.getElementById('sound-label');
+        if (this.muted) {
+          icon.className = 'fa-solid fa-volume-xmark';
+          label.textContent = '음소거';
+        } else {
+          icon.className = 'fa-solid fa-volume-high';
+          label.textContent = '사운드';
+          this.tone(550, 0.08);
+        }
+      }
+      tone(freq, duration = 0.1, type = 'sine') {
+        if (this.muted) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {}
+      }
+      tick() { this.tone(850, 0.04, 'triangle'); }
+      buzzer() { this.tone(260, 0.3, 'sawtooth'); }
+      correct() {
+        if (this.muted) return;
+        [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+          setTimeout(() => this.tone(f, 0.15, 'triangle'), i * 85);
+        });
+      }
+      wrong() {
+        if (this.muted) return;
+        [320, 240].forEach((f, i) => {
+          setTimeout(() => this.tone(f, 0.22, 'sawtooth'), i * 130);
+        });
+      }
+      fanfare() {
+        if (this.muted) return;
+        [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((f, i) => {
+          setTimeout(() => this.tone(f, 0.32, 'triangle'), i * 110);
+        });
+      }
+    }
+    const audioFx = new AudioEngine();
+
+    /* =========================================================================
+       3. REALTIME SYNC ENGINE (Firebase + BroadcastChannel + LocalStorage)
+       ========================================================================= */
+    class SyncEngine {
+      constructor() {
+        this.db = null;
+        this.pin = null;
+        this.channel = ('BroadcastChannel' in window) ? new BroadcastChannel('kahoot_tedx_sync') : null;
+
+        if (this.channel) {
+          this.channel.onmessage = (e) => this.handleSyncMessage(e.data);
+        }
+
+        window.addEventListener('storage', (e) => {
+          if (e.key === 'kahoot_sync_event' && e.newValue) {
+            try {
+              this.handleSyncMessage(JSON.parse(e.newValue));
+            } catch(err) {}
+          }
+        });
+
+        this.initFirebase();
+      }
+
+      initFirebase() {
+        const stored = localStorage.getItem('kahoot_fb_cfg');
+        if (stored) {
+          try {
+            const cfg = JSON.parse(stored);
+            if (!firebase.apps.length) {
+              firebase.initializeApp(cfg);
+            }
+            this.db = firebase.database();
+            this.updateBadge(true, 'Firebase 연결됨');
+            return;
+          } catch(e) {
+            console.warn("Firebase Init fallback", e);
+          }
+        }
+        this.updateBadge(true, '로컬 멀티탭 동기화');
+      }
+
+      updateBadge(active, text) {
+        document.getElementById('sync-dot').className = `w-2.5 h-2.5 rounded-full ${active ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`;
+        document.getElementById('sync-text').textContent = text;
+      }
+
+      saveFirebaseConfig() {
+        const raw = document.getElementById('firebase-config-input').value.trim();
+        if (!raw) return;
+        try {
+          const cfg = JSON.parse(raw);
+          localStorage.setItem('kahoot_fb_cfg', JSON.stringify(cfg));
+          if (!firebase.apps.length) firebase.initializeApp(cfg);
+          this.db = firebase.database();
+          ui.closeModal('modal-firebase');
+          this.updateBadge(true, 'Firebase 연결됨');
+          ui.toast("Firebase Realtime Database에 성공적으로 연결되었습니다!");
+        } catch(e) {
+          ui.toast("올바른 JSON 구성 문자열이 아닙니다.");
+        }
+      }
+
+      clearFirebaseConfig() {
+        localStorage.removeItem('kahoot_fb_cfg');
+        this.db = null;
+        document.getElementById('firebase-config-input').value = '';
+        this.updateBadge(true, '로컬 멀티탭 동기화');
+        ui.toast("Firebase 설정이 해제되었습니다.");
+      }
+
+      // Outgoing broadcast
+      send(pin, payload) {
+        this.pin = pin;
+        const msg = { pin, timestamp: Date.now(), ...payload };
+
+        if (this.channel) {
+          this.channel.postMessage(msg);
+        }
+        try {
+          localStorage.setItem('kahoot_sync_event', JSON.stringify(msg));
+        } catch(e) {}
+
+        if (this.db) {
+          this.db.ref(`kahoot_rooms/${pin}`).update(payload).catch(err => console.warn(err));
+        }
+      }
+
+      // Incoming listener for students
+      listenRoom(pin, callback) {
+        this.pin = pin;
+        if (this.db) {
+          this.db.ref(`kahoot_rooms/${pin}`).on('value', snap => {
+            const val = snap.val();
+            if (val) callback(val);
+          });
+        }
+      }
+
+      handleSyncMessage(msg) {
+        if (!msg || msg.pin !== this.pin) return;
+
+        if (msg.type === 'PLAYER_JOIN') {
+          hostApp.handlePlayerJoin(msg.player);
+        } else if (msg.type === 'PLAYER_SUBMIT') {
+          hostApp.handlePlayerAnswer(msg.playerId, msg.choice, msg.timeTaken);
+        } else if (msg.type === 'HOST_STATE') {
+          playerApp.handleHostState(msg);
+        }
+      }
+    }
+    const syncEngine = new SyncEngine();
+
+    /* =========================================================================
+       4. HOST APPLICATION LOGIC
+       ========================================================================= */
+    const hostApp = {
+      pin: null,
+      currentQ: 0,
+      timer: 20,
+      timerId: null,
+      players: {}, // id: { id, name, studentId, score, correctCount, currentChoice, timeTaken, isBot }
+
+      initHost() {
+        this.pin = Math.floor(100000 + Math.random() * 900000).toString();
+        this.players = {};
+        this.currentQ = 0;
+        document.getElementById('lobby-pin-display').textContent = this.pin;
+
+        syncEngine.send(this.pin, {
+          type: 'HOST_STATE',
+          state: 'LOBBY',
+          pin: this.pin
+        });
+
+        // Listen for Firebase direct additions
+        syncEngine.listenRoom(this.pin, (room) => {
+          if (room && room.players) {
+            Object.keys(room.players).forEach(id => {
+              if (!this.players[id]) {
+                this.handlePlayerJoin(room.players[id]);
+              }
+            });
+          }
+        });
+
+        this.renderLobby();
+        ui.showScreen('screen-host-lobby');
+      },
+
+      copyPIN() {
+        const el = document.createElement("input");
+        document.body.appendChild(el);
+        el.value = this.pin;
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+        ui.toast(`PIN [${this.pin}] 복사 완료! 학생들에게 전달하세요.`);
+      },
+
+      injectSampleBots(count = 4) {
+        const pool = [
+          { id: '2024101', name: '김민준' }, { id: '2024105', name: '이서연' },
+          { id: '2024109', name: '박도윤' }, { id: '2024114', name: '최지우' },
+          { id: '2024121', name: '정예준' }, { id: '2024128', name: '강하은' }
+        ];
+        for (let i = 0; i < count; i++) {
+          const item = pool[Math.floor(Math.random() * pool.length)];
+          const pid = 'bot_' + Math.random().toString(36).substr(2, 6);
+          this.handlePlayerJoin({
+            id: pid,
+            name: `${item.name}(${Object.keys(this.players).length + 1})`,
+            studentId: item.id,
+            score: 0,
+            correctCount: 0,
+            isBot: true
+          });
+        }
+        audioFx.tone(650, 0.08);
+      },
+
+      handlePlayerJoin(player) {
+        if (!player || !player.id) return;
+        this.players[player.id] = {
+          ...player,
+          score: player.score || 0,
+          correctCount: player.correctCount || 0,
+          currentChoice: null,
+          timeTaken: null
+        };
+        this.renderLobby();
+      },
+
+      renderLobby() {
+        const list = Object.values(this.players);
+        document.getElementById('lobby-participant-count').textContent = list.length;
+        const container = document.getElementById('lobby-players-box');
+
+        if (list.length === 0) {
+          container.innerHTML = `
+            <div class="text-purple-300 italic text-sm py-12 flex flex-col items-center gap-2">
+              <i class="fa-solid fa-hourglass-start text-3xl animate-pulse"></i>
+              학생들이 PIN 번호를 입력하고 들어오길 기다리고 있습니다...
+            </div>`;
+          return;
+        }
+
+        container.innerHTML = list.map(p => `
+          <div class="bg-white/10 text-white font-bold px-4 py-2 rounded-2xl text-sm border border-white/20 flex items-center gap-2 shadow">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span>${p.name}</span>
+            <span class="text-xs text-purple-300 font-normal">(${p.studentId})</span>
+          </div>
+        `).join('');
+      },
+
+      startQuiz() {
+        if (Object.keys(this.players).length === 0) {
+          ui.toast("최소 1명 이상의 학생이 접속해야 퀴즈를 시작할 수 있습니다.");
+          return;
+        }
+        audioFx.fanfare();
+        this.currentQ = 0;
+        this.broadcastQuestion(0);
+      },
+
+      broadcastQuestion(qIdx) {
+        clearInterval(this.timerId);
+        this.currentQ = qIdx;
+        this.timer = 20;
+
+        // Reset round submission state
+        Object.values(this.players).forEach(p => {
+          p.currentChoice = null;
+          p.timeTaken = null;
+        });
+
+        const q = QUIZ_QUESTIONS[qIdx];
+        document.getElementById('host-q-badge').textContent = `QUESTION ${qIdx + 1} OF ${QUIZ_QUESTIONS.length}`;
+        document.getElementById('host-q-text').textContent = q.question;
+        document.getElementById('host-timer-box').textContent = '20';
+        document.getElementById('host-timer-box').className = 'w-16 h-16 rounded-2xl bg-amber-400 text-purple-950 font-black text-3xl flex items-center justify-center shadow-lg border-2 border-white/30 transition-colors';
+
+        // 4 options on big screen
+        const choicesGrid = document.getElementById('host-choices-container');
+        choicesGrid.innerHTML = q.choices.map((c, i) => `
+          <div class="${KAHOOT_STYLES[i].bg} p-4 sm:p-5 rounded-2xl flex items-center gap-3.5 shadow-lg border-2 border-white/20 text-white">
+            <div class="w-11 h-11 rounded-xl bg-black/20 flex items-center justify-center text-2xl font-black shrink-0">
+              ${KAHOOT_STYLES[i].symbol}
+            </div>
+            <div class="text-sm sm:text-base font-extrabold leading-tight">
+              ${c}
+            </div>
+          </div>
+        `).join('');
+
+        this.updateResponseCounter();
+        ui.showScreen('screen-host-question');
+
+        // Broadcast to players
+        syncEngine.send(this.pin, {
+          type: 'HOST_STATE',
+          state: 'QUESTION',
+          currentQ: qIdx,
+          timer: 20
+        });
+
+        // Trigger AI Bot responses
+        this.triggerBotResponses(qIdx);
+
+        // 20s Countdown timer loop
+        this.timerId = setInterval(() => {
+          this.timer--;
+          document.getElementById('host-timer-box').textContent = this.timer;
+
+          if (this.timer <= 5 && this.timer > 0) {
+            audioFx.tick();
+            document.getElementById('host-timer-box').className = 'w-16 h-16 rounded-2xl bg-red-500 text-white font-black text-3xl flex items-center justify-center shadow-lg border-2 border-white/30 transition-colors animate-pulse';
+          }
+
+          if (this.timer <= 0) {
+            clearInterval(this.timerId);
+            this.concludeQuestion();
+          }
+        }, 1000);
+      },
+
+      triggerBotResponses(qIdx) {
+        const q = QUIZ_QUESTIONS[qIdx];
+        Object.values(this.players).forEach(p => {
+          if (p.isBot) {
+            const delay = Math.floor(Math.random() * 11000) + 1500;
+            setTimeout(() => {
+              if (this.timer > 0 && p.currentChoice === null) {
+                // 75% accuracy
+                const isCorrect = Math.random() < 0.75;
+                const pick = isCorrect ? q.correctIndex : Math.floor(Math.random() * 4);
+                this.handlePlayerAnswer(p.id, pick, 20 - this.timer);
+              }
+            }, delay);
+          }
+        });
+      },
+
+      handlePlayerAnswer(pid, choice, timeTaken) {
+        const p = this.players[pid];
+        if (!p || p.currentChoice !== null) return;
+        p.currentChoice = choice;
+        p.timeTaken = timeTaken;
+        this.updateResponseCounter();
+
+        // If everyone answered, stop timer early
+        const total = Object.keys(this.players).length;
+        const answered = Object.values(this.players).filter(pl => pl.currentChoice !== null).length;
+        if (answered >= total && total > 0 && this.timer > 0) {
+          setTimeout(() => this.concludeQuestion(), 350);
+        }
+      },
+
+      updateResponseCounter() {
+        const total = Object.keys(this.players).length;
+        const answered = Object.values(this.players).filter(p => p.currentChoice !== null).length;
+        document.getElementById('host-answers-count').textContent = `${answered} / ${total}`;
+      },
+
+      concludeQuestionEarly() {
+        clearInterval(this.timerId);
+        this.concludeQuestion();
+      },
+
+      concludeQuestion() {
+        clearInterval(this.timerId);
+        audioFx.buzzer();
+
+        const q = QUIZ_QUESTIONS[this.currentQ];
+
+        // Speed-based grading (Max 1000 pts)
+        Object.values(this.players).forEach(p => {
+          if (p.currentChoice === q.correctIndex) {
+            const time = p.timeTaken || 20;
+            const pts = Math.round((1 - (time / 40)) * 1000);
+            p.score += Math.max(pts, 500);
+            p.correctCount += 1;
+          }
+        });
+
+        // Broadcast reveal state to players
+        syncEngine.send(this.pin, {
+          type: 'HOST_STATE',
+          state: 'REVEAL',
+          correctIndex: q.correctIndex,
+          players: this.players
+        });
+
+        this.renderRevealScreen();
+      },
+
+      renderRevealScreen() {
+        const q = QUIZ_QUESTIONS[this.currentQ];
+        const correct = KAHOOT_STYLES[q.correctIndex];
+
+        document.getElementById('reveal-correct-box').innerHTML = `
+          <span class="inline-flex items-center gap-2 px-3.5 py-1 rounded-xl text-white ${correct.bg}">
+            ${correct.symbol} 정답: ${q.choices[q.correctIndex]}
+          </span>
+        `;
+        document.getElementById('reveal-expl-text').textContent = q.explanation;
+
+        // Distribution Bar Chart
+        const counts = [0, 0, 0, 0];
+        Object.values(this.players).forEach(p => {
+          if (p.currentChoice !== null && counts[p.currentChoice] !== undefined) {
+            counts[p.currentChoice]++;
+          }
+        });
+        const maxCount = Math.max(...counts, 1);
+
+        document.getElementById('reveal-bars-box').innerHTML = counts.map((cnt, i) => {
+          const heightPercent = Math.round((cnt / maxCount) * 100);
+          return `
+            <div class="flex flex-col items-center gap-1.5">
+              <div class="text-xs font-black text-amber-300">${cnt}명</div>
+              <div class="w-full bg-white/10 rounded-xl h-28 flex items-end p-1.5 border border-white/10">
+                <div class="w-full ${KAHOOT_STYLES[i].bg} rounded-lg transition-all duration-700" style="height: ${Math.max(heightPercent, 8)}%;"></div>
+              </div>
+              <span class="text-sm font-black text-white">${KAHOOT_STYLES[i].symbol}</span>
+            </div>
+          `;
+        }).join('');
+
+        // Leaderboard Top 5
+        const sorted = Object.values(this.players).sort((a, b) => b.score - a.score);
+        document.getElementById('reveal-leaderboard-box').innerHTML = sorted.slice(0, 5).map((p, idx) => {
+          const badges = ['bg-amber-400 text-purple-950', 'bg-slate-300 text-purple-950', 'bg-amber-700 text-white'];
+          return `
+            <div class="bg-white/10 p-3 sm:p-3.5 rounded-2xl flex items-center justify-between border border-white/10">
+              <div class="flex items-center gap-3">
+                <span class="w-7 h-7 rounded-xl ${badges[idx] || 'bg-white/20 text-white'} font-black text-sm flex items-center justify-center">
+                  ${idx + 1}
+                </span>
+                <div>
+                  <div class="font-extrabold text-sm sm:text-base text-white">${p.name}</div>
+                  <div class="text-xs text-purple-300">${p.studentId} • 정답 ${p.correctCount}개</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="text-lg font-black text-amber-300">${p.score.toLocaleString()}</span>
+                <span class="text-xs text-purple-300">pts</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const isLast = (this.currentQ >= QUIZ_QUESTIONS.length - 1);
+        document.getElementById('reveal-next-btn-text').textContent = isLast ? '최종 시상대 발표' : '다음 문제로';
+
+        ui.showScreen('screen-host-reveal');
+      },
+
+      nextStep() {
+        if (this.currentQ < QUIZ_QUESTIONS.length - 1) {
+          this.broadcastQuestion(this.currentQ + 1);
+        } else {
+          this.showPodium();
+        }
+      },
+
+      showPodium() {
+        audioFx.fanfare();
+        try {
+          confetti({ particleCount: 140, spread: 90, origin: { y: 0.6 } });
+        } catch(e) {}
+
+        const sorted = Object.values(this.players).sort((a, b) => b.score - a.score);
+
+        // Podium top 3
+        if (sorted[0]) {
+          document.getElementById('podium-1st-name').textContent = `${sorted[0].name} (${sorted[0].studentId})`;
+          document.getElementById('podium-1st-pts').textContent = sorted[0].score.toLocaleString() + ' pts';
+        }
+        if (sorted[1]) {
+          document.getElementById('podium-2nd-name').textContent = `${sorted[1].name} (${sorted[1].studentId})`;
+          document.getElementById('podium-2nd-pts').textContent = sorted[1].score.toLocaleString() + ' pts';
+        }
+        if (sorted[2]) {
+          document.getElementById('podium-3rd-name').textContent = `${sorted[2].name} (${sorted[2].studentId})`;
+          document.getElementById('podium-3rd-pts').textContent = sorted[2].score.toLocaleString() + ' pts';
+        }
+
+        document.getElementById('final-total-tag').textContent = `총 ${sorted.length}명 응시`;
+
+        // Full score roster table
+        document.getElementById('final-roster-tbody').innerHTML = sorted.map((p, idx) => `
+          <tr class="hover:bg-white/5 transition">
+            <td class="p-3 font-bold">${idx + 1}위</td>
+            <td class="p-3 text-purple-200">${p.studentId}</td>
+            <td class="p-3 font-black text-white">${p.name}</td>
+            <td class="p-3 text-center text-purple-200">${p.correctCount} / ${QUIZ_QUESTIONS.length}</td>
+            <td class="p-3 text-right font-black text-amber-300">${p.score.toLocaleString()} pts</td>
+          </tr>
+        `).join('');
+
+        // Notify student devices
+        syncEngine.send(this.pin, {
+          type: 'HOST_STATE',
+          state: 'FINAL',
+          sortedPlayers: sorted
+        });
+
+        ui.showScreen('screen-host-podium');
+      }
+    };
+
+    /* =========================================================================
+       5. PLAYER APPLICATION LOGIC
+       ========================================================================= */
+    const playerApp = {
+      id: null,
+      name: '',
+      studentId: '',
+      pin: '',
+      hasAnswered: false,
+
+      initPlayer() {
+        ui.showScreen('screen-player-join');
+      },
+
+      submitJoin() {
+        const pin = document.getElementById('player-pin-input').value.trim();
+        const sid = document.getElementById('player-id-input').value.trim();
+        const name = document.getElementById('player-name-input').value.trim();
+
+        if (!pin || pin.length < 5) {
+          ui.toast("대형 화면의 6자리 PIN 번호를 입력하세요.");
+          return;
+        }
+        if (!sid) {
+          ui.toast("학번을 입력해주세요.");
+          return;
+        }
+        if (!name) {
+          ui.toast("이름을 입력해주세요.");
+          return;
+        }
+
+        this.pin = pin;
+        this.studentId = sid;
+        this.name = name;
+        this.id = 'stu_' + Math.random().toString(36).substr(2, 7);
+
+        document.getElementById('player-profile-name').textContent = name;
+        document.getElementById('player-profile-id').textContent = `학번: ${sid}`;
+
+        // Send JOIN message to host
+        syncEngine.send(this.pin, {
+          type: 'PLAYER_JOIN',
+          player: {
+            id: this.id,
+            name: this.name,
+            studentId: this.studentId,
+            score: 0,
+            correctCount: 0,
+            isBot: false
+          }
+        });
+
+        // Listen for host commands
+        syncEngine.listenRoom(this.pin, (room) => {
+          if (room && room.type === 'HOST_STATE') {
+            this.handleHostState(room);
+          }
+        });
+
+        audioFx.tone(550, 0.1);
+        ui.showScreen('screen-player-lobby');
+      },
+
+      handleHostState(data) {
+        if (data.state === 'QUESTION') {
+          this.hasAnswered = false;
+          document.getElementById('player-current-q-tag').textContent = `QUESTION ${data.currentQ + 1}`;
+          document.getElementById('player-timer-tag').textContent = `${data.timer || 20}s`;
+
+          // Re-enable 4 touch buttons
+          document.querySelectorAll('.player-k-btn').forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+          });
+
+          ui.showScreen('screen-player-active');
+        } else if (data.state === 'REVEAL') {
+          this.renderFeedbackScreen(data.correctIndex, data.players);
+        } else if (data.state === 'FINAL') {
+          this.renderFinalScreen(data.sortedPlayers);
+        }
+      },
+
+      submitAnswer(choiceIndex) {
+        if (this.hasAnswered) return;
+        this.hasAnswered = true;
+
+        audioFx.tone(680, 0.08);
+
+        // Visual feedback on tapped button
+        document.querySelectorAll('.player-k-btn').forEach(btn => {
+          btn.disabled = true;
+          btn.style.opacity = '0.4';
+        });
+
+        // Transmit answer to Host
+        syncEngine.send(this.pin, {
+          type: 'PLAYER_SUBMIT',
+          playerId: this.id,
+          choice: choiceIndex,
+          timeTaken: 20 - (hostApp.timer || 10)
+        });
+
+        // Show waiting feedback
+        const box = document.getElementById('player-feedback-box');
+        box.className = 'p-8 rounded-3xl shadow-2xl text-white space-y-3 bg-kahoot-dark';
+        document.getElementById('feedback-icon-box').textContent = '⏳';
+        document.getElementById('feedback-title-box').textContent = '답안 제출 완료!';
+        document.getElementById('feedback-subtitle-box').textContent = '선생님이 결과를 공개할 때까지 잠시 대기하세요.';
+        document.getElementById('feedback-score-tag').classList.add('hidden');
+
+        ui.showScreen('screen-player-feedback');
+      },
+
+      renderFeedbackScreen(correctIndex, players) {
+        const myData = players ? players[this.id] : null;
+        const myChoice = myData ? myData.currentChoice : null;
+        const isCorrect = (myChoice === correctIndex);
+
+        const box = document.getElementById('player-feedback-box');
+        const icon = document.getElementById('feedback-icon-box');
+        const title = document.getElementById('feedback-title-box');
+        const sub = document.getElementById('feedback-subtitle-box');
+        const scoreTag = document.getElementById('feedback-score-tag');
+
+        if (isCorrect) {
+          audioFx.correct();
+          box.className = 'p-8 rounded-3xl shadow-2xl text-white space-y-3 bg-kahoot-green';
+          icon.textContent = '🎉';
+          title.textContent = '정답입니다!';
+          sub.textContent = '정확하고 신속하게 맞혔습니다.';
+          scoreTag.textContent = `현재 득점: ${myData ? myData.score.toLocaleString() : 0} pts`;
+          scoreTag.classList.remove('hidden');
+        } else {
+          audioFx.wrong();
+          box.className = 'p-8 rounded-3xl shadow-2xl text-white space-y-3 bg-kahoot-red';
+          icon.textContent = '❌';
+          title.textContent = '오답입니다!';
+          sub.textContent = (myChoice === null) ? '시간 내에 답을 선택하지 못했습니다.' : '아쉽네요. 다음 문제를 집중해보세요!';
+          scoreTag.textContent = `현재 득점: ${myData ? myData.score.toLocaleString() : 0} pts`;
+          scoreTag.classList.remove('hidden');
+        }
+
+        ui.showScreen('screen-player-feedback');
+      },
+
+      renderFinalScreen(sortedPlayers) {
+        const rank = (sortedPlayers || []).findIndex(p => p.id === this.id) + 1;
+        const me = (sortedPlayers || []).find(p => p.id === this.id);
+
+        document.getElementById('player-final-rank-tag').textContent = rank > 0 ? `# ${rank}위` : '# -';
+        document.getElementById('player-final-score-tag').textContent = `총 ${me ? me.score.toLocaleString() : 0}점 (${me ? me.correctCount : 0} / 4 정답)`;
+
+        ui.showScreen('screen-player-final');
+      }
+    };
+
+    /* =========================================================================
+       6. EXPORT & PDF PRINTING SERVICE
+       ========================================================================= */
+    const exportService = {
+      exportExcel() {
+        const sorted = Object.values(hostApp.players).sort((a, b) => b.score - a.score);
+        if (sorted.length === 0) {
+          ui.toast("내보낼 학생 데이터가 없습니다.");
+          return;
+        }
+
+        // CSV Structure with UTF-8 BOM (\uFEFF) to guarantee Korean characters render accurately in Excel
+        let csv = "순위,학번,성명,맞힌문항수,총문항수,총점수,평가일시\r\n";
+        const dateStr = new Date().toISOString().slice(0, 10);
+
+        sorted.forEach((p, idx) => {
+          const safeName = `"${p.name.replace(/"/g, '""')}"`;
+          const safeId = `"${p.studentId.replace(/"/g, '""')}"`;
+          csv += `${idx + 1},${safeId},${safeName},${p.correctCount},${QUIZ_QUESTIONS.length},${p.score},${dateStr}\r\n`;
+        });
+
+        const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `그래픽노블_카훗퀴즈_성적_${hostApp.pin || 'ROOM'}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        ui.toast("학생 성적 CSV 파일이 Excel 호환 포맷으로 다운로드되었습니다.");
+      },
+
+      printPDFReport() {
+        const sorted = Object.values(hostApp.players).sort((a, b) => b.score - a.score);
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일`;
+
+        // Fill Metadata
+        document.getElementById('print-date').textContent = dateStr;
+        document.getElementById('print-pin').textContent = hostApp.pin || 'DEMO';
+        document.getElementById('print-total-students').textContent = `${sorted.length}명`;
+        document.getElementById('print-top-score').textContent = sorted[0] ? `${sorted[0].name} (${sorted[0].studentId}, ${sorted[0].score.toLocaleString()}점)` : '-';
+
+        const totalPts = sorted.reduce((sum, p) => sum + p.score, 0);
+        const avgPts = sorted.length > 0 ? Math.round(totalPts / sorted.length) : 0;
+        document.getElementById('print-avg-score').textContent = `${avgPts.toLocaleString()}점`;
+
+        // Fill Table Body
+        document.getElementById('print-table-body').innerHTML = sorted.map((p, idx) => `
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 8px; text-align: center; font-weight: bold;">${idx + 1}</td>
+            <td style="padding: 8px;">${p.studentId}</td>
+            <td style="padding: 8px; font-weight: bold;">${p.name}</td>
+            <td style="padding: 8px; text-align: center;">${p.correctCount} / ${QUIZ_QUESTIONS.length}</td>
+            <td style="padding: 8px; text-align: right; font-weight: bold;">${p.score.toLocaleString()} pts</td>
+          </tr>
+        `).join('');
+
+        // Trigger clean window.print
+        window.print();
+      }
+    };
+
+    /* =========================================================================
+       7. UI MANAGER & VIEW ROUTER
+       ========================================================================= */
+    const ui = {
+      goHome() {
+        clearInterval(hostApp.timerId);
+        this.showScreen('screen-home');
+      },
+      showScreen(screenId) {
+        const screens = [
+          'screen-home',
+          'screen-host-lobby',
+          'screen-host-question',
+          'screen-host-reveal',
+          'screen-host-podium',
+          'screen-player-join',
+          'screen-player-lobby',
+          'screen-player-active',
+          'screen-player-feedback',
+          'screen-player-final'
+        ];
+        screens.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            if (id === screenId) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+          }
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      },
+      openModal(modalId) {
+        const stored = localStorage.getItem('kahoot_fb_cfg');
+        if (stored) {
+          document.getElementById('firebase-config-input').value = stored;
+        }
+        document.getElementById(modalId).classList.remove('hidden');
+      },
+      closeModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+      },
+      toast(text) {
+        const box = document.getElementById('toast-bar');
+        document.getElementById('toast-message').textContent = text;
+        box.classList.remove('translate-y-24', 'opacity-0');
+        setTimeout(() => {
+          box.classList.add('translate-y-24', 'opacity-0');
+        }, 2800);
+      }
+    };
+
+    // Ensure DOM is ready
+    window.addEventListener('DOMContentLoaded', () => {
+      ui.showScreen('screen-home');
+    });
+  </script>
+</body>
+</html>
